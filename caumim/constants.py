@@ -122,7 +122,9 @@ IDENTIFICATION2LABELS = {
     "TLearner": "Outcome model (TLearner)",
     "CausalForest": "Causal Forest",
     "LinearDML": "Double Machine Learning",
+    "DML": "Double Machine Learning",
     "LinearDRLearner": "Doubly Robust (AIPW)",
+    "DRLearner": "Doubly Robust (AIPW)",
 }
 IDENTIFICATION2SHORT_LABELS = {
     "DML": "Double ML",

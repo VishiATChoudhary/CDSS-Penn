@@ -8,15 +8,15 @@ from caumim.constants import DIR2DOCS_IMG, DIR2EXPERIENCES
 # %%
 post_treatment_results = pd.read_csv(
     DIR2EXPERIENCES
-    / "predictive_failure__2023-07-21_14-58-34__obs_1__post_treatment_True/scores.csv"
+    / "predictive_failure__2026-03-06_22-25-50__obs_1__post_treatment_True/scores.csv"
 )
 pretreatment_results = pd.read_csv(
     DIR2EXPERIENCES
-    / "predictive_failure__2023-07-25_22-04-47__obs_1__post_treatment_False/scores.csv"
+    / "predictive_failure__2026-03-06_22-26-15__obs_1__post_treatment_False/scores.csv"
 )
 random_classifier_results = pd.read_csv(
     DIR2EXPERIENCES
-    / "predictive_failure__2023-07-26_18-28-05__obs_1__post_treatment_True_dummy_classifier/scores.csv"
+    / "predictive_failure__2026-03-06_22-26-35__obs_1__post_treatment_True/scores.csv"
 )
 # keep only the test set and rename
 
@@ -76,7 +76,7 @@ ax.set_ylabel("Test set features")
 legend_ = ax.get_legend()
 ax.get_legend().remove()
 plt.legend(
-    handles=legend_.legendHandles,
+    handles=legend_.legend_handles,
     loc="upper center",
     bbox_to_anchor=(0.5, 1.3),
     ncol=3,
@@ -90,7 +90,7 @@ print(results_metric.groupby(["split", LABEL_MODEL_FEATURES]).mean())
 metrics = ["pr_auc", "roc_auc"]
 fig, axes = plt.subplots(1, len(metrics), figsize=(5, 2), sharey=True)
 for i, (ax, metric) in enumerate(zip(axes, metrics)):
-    results_metric = results.melt(
+    results_metric = post_treatment_results.melt(
         id_vars=["random_seed"],
         var_name="split",
         value_vars=[f"test_{metric}", f"val_{metric}"],

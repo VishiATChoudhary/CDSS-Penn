@@ -98,7 +98,7 @@ F = Flowchart(
     cohort_characteristics=discriminative_features,
 )
 # %%
-treatment_criteria_name = "Albumin in first 24h"
+treatment_criteria_name = f"Albumin in first {observation_window_in_day * 24}h"
 for criterion_name in inclusion_ids.keys():
     if criterion_name not in ["initial", treatment_criteria_name]:
         F.add_criterion(
@@ -189,6 +189,10 @@ feature_types.numerical_features += ["admission_age"]
 print(event_features.shape)
 event_features["code"].value_counts().sort("counts", descending=True)
 
+comorbidities_events = comorbidities_events.with_columns([
+    pl.col(c).dt.cast_time_unit("us") for c in [COLNAME_START, COLNAME_END]
+    if c in comorbidities_events.columns
+])
 event_features = pl.concat([event_features, comorbidities_events])
 feature_types.binary_features += albumin_comorbidities
 # %%

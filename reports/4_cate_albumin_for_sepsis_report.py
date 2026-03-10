@@ -9,11 +9,9 @@ from caumim.constants import *
 import forestplot as fp
 
 from caumim.reports_utils import hist_plot_binary_treatment_hte, add_albumin_label
-%load_ext autoreload
-%autoreload 2
 
 # %%
-cohort_name = "cate_estimates_20230718_w_septic_shock__bs_10"
+cohort_name = "cate_estimates_20260306220510"
 ### For IP matching, interesting results with RF which seems to overfit the data and results are dependents on the aggregation strategy.
 results = pd.read_parquet(
     DIR2EXPERIENCES / "albumin_for_sepsis__obs_1d" / cohort_name / "logs"
@@ -205,7 +203,7 @@ for cate_feature_name in ["X_cate__White","X_cate__Female","X_cate__admission_ag
         cate_results = pd.DataFrame({k: run_results[k] for k in result_columns})
         cate_results["X_cate__admission_age_bin"] = cate_results["X_cate__admission_age"].apply(lambda x: x>=age_group_thres)
 
-        fig, ax = , add_albumin_label(
+        fig, ax = hist_plot_binary_treatment_hte(
             cate_feature_name=cate_feature_name,
             target_set="cate_predictions",
             cate_results=cate_results,

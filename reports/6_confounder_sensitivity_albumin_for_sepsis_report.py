@@ -13,7 +13,7 @@ from caumim.variables.selection import FEATURE_SETS, LABEL_ALL_FEATURES
 MAIN_FIGURE = True
 SHARE_X_AXIS = True
 
-cohort_name = "sensitivity_confounders_albumin_for_sepsis__bs_50"
+cohort_name = "sensitivity_confounders_albumin_for_sepsis"
 ### For IP matching, interesting results with RF which seems to overfit the data and results are dependents on the aggregation strategy.
 raw_results = pd.read_parquet(DIR2EXPERIENCES / cohort_name / "logs")
 results = add_rct_gold_standard_line(raw_results)

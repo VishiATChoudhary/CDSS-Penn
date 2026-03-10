@@ -96,30 +96,175 @@ clean:
 
 
 #################################################################################
+# PYTHON                                                                        #
+#################################################################################
+
+# Auto-detect python: prefer pyenv 3.10, then system python3
+PYTHON := $(shell \
+	if [ -x "$$HOME/.pyenv/versions/3.10.20/bin/python" ]; then \
+		echo "$$HOME/.pyenv/versions/3.10.20/bin/python"; \
+	elif command -v python3 >/dev/null 2>&1; then \
+		echo "python3"; \
+	else \
+		echo "python"; \
+	fi)
+
+# Data directories
+DATA_DIR      := $(PROJECT_DIR)/data
+MIMIC_CSV     := $(DATA_DIR)/mimiciv/3.1
+MIMIC_PARQUET := $(DATA_DIR)/mimiciv_as_parquet
+COHORT_DIR    := $(DATA_DIR)/cohort
+EXPE_DIR      := $(DATA_DIR)/experiences
+
+#################################################################################
+# PIPELINE TARGETS                                                              #
+#################################################################################
+
+.PHONY: all
+## Run the full pipeline end-to-end (Steps 0-5 + reports)
+all: data cohort experiments reports
+	@echo "\n=== Full pipeline complete ==="
+
+# ---- Step 0: Data Acquisition ----
+
+.PHONY: parquet
+## Convert MIMIC-IV CSV.GZ files to Parquet
+parquet:
+	@echo "=== Step 0a: CSV → Parquet ==="
+	$(PYTHON) scripts/csv_to_parquet.py
+
+.PHONY: derived
+## Build MIMIC-IV derived concept tables (SOFA, SAPS-II, sepsis3, etc.)
+derived:
+	@echo "=== Step 0b: Build derived concepts ==="
+	$(PYTHON) scripts/build_derived_concepts.py
+
+.PHONY: consolidate
+## Consolidate multi-file parquet dirs into single files (for polars 0.17)
+consolidate:
+	@echo "=== Step 0c: Consolidate derived parquet files ==="
+	$(PYTHON) scripts/consolidate_derived_parquet.py
+
+.PHONY: data
+## Run all data preparation steps (CSV to Parquet + derived + consolidate)
+data: parquet derived consolidate
+	@echo "=== Data preparation complete ==="
+
+# ---- Step 1: Framing (Cohort Construction) ----
+
+.PHONY: cohort
+## Build the target trial population (1-day observation window)
+cohort:
+	@echo "=== Step 1: Building target population ==="
+	$(PYTHON) -c "\
+from caumim.framing.albumin_for_sepsis import COHORT_CONFIG_ALBUMIN_FOR_SEPSIS, get_population; \
+get_population(COHORT_CONFIG_ALBUMIN_FOR_SEPSIS); \
+print('Cohort built successfully')"
+
+.PHONY: cohort-3d
+## Build the 3-day observation cohort (needed for report 0)
+cohort-3d:
+	@echo "=== Building 3-day observation cohort ==="
+	$(PYTHON) -c "\
+from copy import deepcopy; \
+from caumim.framing.albumin_for_sepsis import COHORT_CONFIG_ALBUMIN_FOR_SEPSIS, get_population; \
+c = deepcopy(COHORT_CONFIG_ALBUMIN_FOR_SEPSIS); \
+c['min_icu_survival_unit_day'] = 3; \
+c['min_los_icu_unit_day'] = 3; \
+c['treatment_observation_window_unit_day'] = 3; \
+get_population(c)"
+
+# ---- Steps 3-5: Experiments ----
+
+.PHONY: experiments
+## Run all experiments (Steps 3, 4, and 5)
+experiments: experiment-sensitivity experiment-immortal experiment-feature-agg experiment-confounders experiment-cate experiment-predictive
+	@echo "=== All experiments complete ==="
+
+.PHONY: experiment-sensitivity
+## Step 3: Main sensitivity analysis (estimator/aggregation grid)
+experiment-sensitivity:
+	@echo "=== Step 3: Sensitivity analysis ==="
+	$(PYTHON) -m caumim.experiments.sensitivity_albumin_for_sepsis
+
+.PHONY: experiment-immortal
+## Step 4a: Immortal time bias analysis
+experiment-immortal:
+	@echo "=== Step 4a: Immortal time bias ==="
+	$(PYTHON) -m caumim.experiments.immortal_time_bias_albumin_for_sepis
+
+.PHONY: experiment-feature-agg
+## Step 4b: Feature aggregation sensitivity
+experiment-feature-agg:
+	@echo "=== Step 4b: Feature aggregation sensitivity ==="
+	$(PYTHON) -m caumim.experiments.sensitivity_feature_aggregation_albumin_for_sepsis
+
+.PHONY: experiment-confounders
+## Step 4c: Confounder sensitivity
+experiment-confounders:
+	@echo "=== Step 4c: Confounder sensitivity ==="
+	$(PYTHON) -m caumim.experiments.sensitivity_confounders_albumin_for_sepsis
+
+.PHONY: experiment-cate
+## Step 5: CATE (treatment heterogeneity) exploration
+experiment-cate:
+	@echo "=== Step 5: CATE exploration ==="
+	$(PYTHON) -m caumim.experiments.cate_exploration_albumin_for_sepsis
+
+.PHONY: experiment-predictive
+## Predictive failure experiment (motivational example)
+experiment-predictive:
+	@echo "=== Predictive failure experiment ==="
+	$(PYTHON) -m caumim.experiments.sepsis_mortality_predictive_failure
+	$(PYTHON) -c "\
+from caumim.framing.albumin_for_sepsis import COHORT_CONFIG_ALBUMIN_FOR_SEPSIS; \
+from caumim.experiments.configurations import ESTIMATOR_HGB; \
+from caumim.experiments.sepsis_mortality_predictive_failure import train_predictive_failure_experiment; \
+train_predictive_failure_experiment(COHORT_CONFIG_ALBUMIN_FOR_SEPSIS, \
+    {'observation_period_day': 1, 'train_val_random_seeds': list(range(10)), \
+     'experiment_name': 'predictive_failure', 'post_treatment_features': True}, ESTIMATOR_HGB); \
+train_predictive_failure_experiment(COHORT_CONFIG_ALBUMIN_FOR_SEPSIS, \
+    {'observation_period_day': 1, 'train_val_random_seeds': list(range(10)), \
+     'experiment_name': 'predictive_failure', 'post_treatment_features': False}, ESTIMATOR_HGB)"
+
+# ---- Reports ----
+
+.PHONY: reports
+## Generate all report figures
+reports: cohort-3d
+	@echo "=== Generating reports ==="
+	$(PYTHON) reports/0_description_albumin_for_sepsis.py
+	$(PYTHON) reports/1_sensitivity_albumin_for_sepsis_report.py
+	$(PYTHON) reports/3_feature_agg_sensitivity_albumin_for_sepsis_report.py
+	$(PYTHON) reports/4_cate_albumin_for_sepsis_report.py
+	$(PYTHON) reports/5_prediction_failure_report.py
+	$(PYTHON) reports/6_confounder_sensitivity_albumin_for_sepsis_report.py
+	@echo "=== Reports complete. Figures in docs/source/_static/img/ ==="
+
+# ---- Utilities ----
+
+.PHONY: clean-cache
+## Clear the joblib cache (useful after changing covariate extraction)
+clean-cache:
+	rm -rf cachedir/joblib
+	@echo "Joblib cache cleared"
+
+.PHONY: which-python
+## Show which python is being used
+which-python:
+	@echo "$(PYTHON)"
+	@$(PYTHON) --version
+
+#################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
 ## Installation
 
 .PHONY: provision-environment
-## Set up Python virtual environment with installed project dependencies
+## Set up Python environment with pip install -e . (pyenv 3.10 recommended)
 provision-environment:
-ifeq ($(shell command -v poetry),)
-	@echo "poetry could not be found!"
-	@echo "Please install poetry!"
-	@echo "Ex.: 'curl -sSL \
-	https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py  | python - \
-	&& source $$HOME/.local/env'"
-	@echo "see:"
-	@echo "- https://python-poetry.org/docs/#installation"
-	@echo "Note: 'pyenv' recommended for Python version management"
-	@echo "see:"
-	@echo "- https://github.com/pyenv/pyenv"
-	@echo "- https://python-poetry.org/docs/managing-environments/"
-	false
-else
-	poetry install --with documentation --sync
-endif
+	$(PYTHON) -m pip install -e .
 
 .PHONY: install-pre-commit-hooks
 ## Install git pre-commit hooks locally

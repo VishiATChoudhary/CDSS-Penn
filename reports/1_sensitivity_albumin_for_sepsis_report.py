@@ -17,7 +17,7 @@ SHARE_X_AXIS = True
 
 cohort_dir = create_cohort_folder(deepcopy(COHORT_CONFIG_ALBUMIN_FOR_SEPSIS))
 cohort_name = cohort_dir.name
-expe_name = "estimates_20230712__est_lr_rf__bs_50"
+expe_name = "estimates_20260306214656"
 #    expe_name = "estimates_20230523__est_lr_rf__bs_10"
 ### For IP matching, interesting results with RF which seems to overfit the data and results are dependents on the aggregation strategy.
 raw_results = pd.read_parquet(
@@ -93,11 +93,11 @@ print(
         "event_aggregations"
     ].count()
 )
-group_order = [NO_MODEL_GROUP_LABEL] + [
+group_order = [NO_MODEL_GROUP_LABEL] + list(dict.fromkeys(
     ident_
-    for ident_ in list(IDENTIFICATION2LABELS.values())
+    for ident_ in IDENTIFICATION2LABELS.values()
     if ident_ in results["estimation_method"].unique()
-]
+))
 # %%
 import forestplot as fp
 

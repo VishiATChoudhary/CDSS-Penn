@@ -9,7 +9,7 @@ from caumim.constants import *
 from caumim.reports_utils import add_albumin_label, add_rct_gold_standard_line
 
 # %%
-cohort_name = "sensitivity_feature_aggregation_albumin_for_sepsis__bs_50"
+cohort_name = "sensitivity_feature_aggregation_albumin_for_sepsis"
 ### For IP matching, interesting results with RF which seems to overfit the data and results are dependents on the aggregation strategy.
 raw_results = pd.read_parquet(DIR2EXPERIENCES / cohort_name / "logs")
 results = add_rct_gold_standard_line(raw_results)
@@ -57,11 +57,11 @@ print(
     ].count()
 )
 results["ntv"] = results["ntv"].map(lambda x: f"{x:.2f}" if x > 0 else "")
-group_order = [NO_MODEL_GROUP_LABEL] + [
+group_order = [NO_MODEL_GROUP_LABEL] + list(dict.fromkeys(
     ident_
-    for ident_ in list(IDENTIFICATION2LABELS.values())
+    for ident_ in IDENTIFICATION2LABELS.values()
     if ident_ in results["estimation_method"].unique()
-]
+))
 # %%
 import forestplot as fp
 

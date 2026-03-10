@@ -83,3 +83,6 @@ cachedir/
 .logs/
 # Jupyter
 **/*.ipynb_checkpoints/
+
+# Session notes
+sessions/

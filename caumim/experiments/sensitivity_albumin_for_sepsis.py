@@ -25,6 +25,7 @@ from caumim.variables.selection import (
     get_event_covariates_albumin_zhou,
     FEATURE_DEMOGRAPHICS,
     FEATURE_SETS,
+    LABEL_ALL_FEATURES,
     LABEL_DEMOGRAPHICS,
 )
 from caumim.variables.utils import (
@@ -87,7 +88,6 @@ def run_sensitivity_experiment(config):
     target_trial_population = pl.read_parquet(
         cohort_folder / FILENAME_TARGET_POPULATION
     )
-    breakpoint()
     # FOR TESTING: subsample the data
     target_trial_population = target_trial_population.sample(
         fraction=config["fraction"], shuffle=True, seed=config.random_state
@@ -125,7 +125,7 @@ def run_sensitivity_experiment(config):
         "estimation_method": config.experience_grid_dict["estimation_method"],
         "estimator": config.experience_grid_dict["estimator"],
         "feature_subset": config.experience_grid_dict.get(
-            "feature_subset", FEATURE_SETS["All confounders"]
+            "feature_subset", [LABEL_ALL_FEATURES]
         ),
     }
     runs_to_be_launch = list(ParameterGrid(experience_grid_dict))

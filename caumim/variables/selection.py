@@ -222,8 +222,8 @@ def get_event_covariates_albumin_zhou(
             .then("Aminoglycosides")
             .otherwise(pl.col(COLNAME_LABEL))
             .alias(COLNAME_LABEL),
-            pl.col("stoptime").dt.cast_time_unit("ns").alias(COLNAME_END),
-            pl.col(COLNAME_START).dt.cast_time_unit("ns").alias(COLNAME_START),
+            pl.col("stoptime").dt.cast_time_unit("us").alias(COLNAME_END),
+            pl.col(COLNAME_START).dt.cast_time_unit("us").alias(COLNAME_START),
         ],
     )
     event_list.append(
@@ -460,7 +460,15 @@ def get_event_covariates_albumin_zhou(
         )
     )
     # Get all features together
-    event_features = pl.concat(event_list).collect()
+    # Normalize datetime columns to microsecond precision before concat
+    normalized_event_list = []
+    for ev in event_list:
+        ev = ev.with_columns([
+            pl.col(c).dt.cast_time_unit("us")
+            for c in [COLNAME_START, COLNAME_END]
+        ])
+        normalized_event_list.append(ev)
+    event_features = pl.concat(normalized_event_list).collect()
     # Restrict to cohort and observation period (before inclusion start)
     event_features = event_features.filter(~event_features.is_duplicated())
 
