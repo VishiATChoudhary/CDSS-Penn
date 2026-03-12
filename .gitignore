@@ -52,6 +52,16 @@ coverage.xml
 # Documentation builds
 docs/_build
 
+# Generated docs
+docs/causalAlbumin.pdf
+docs/causal_dag_interactive.html
+
+# Generated figures from pipeline re-runs
+docs/source/_static/img/albumin_for_sepsis__obs_3d/
+docs/source/_static/img/cate_estimates_*/
+docs/source/_static/img/sensitivity_confounders_*/
+docs/source/_static/img/albumin_for_sepsis__obs_1d/*20260*
+
 # Data
 **/data/*
 cachedir/
